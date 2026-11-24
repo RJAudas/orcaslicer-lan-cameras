@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+<title>LAN cameras</title>
+<style>
+* { box-sizing: border-box }
+body { margin: 0; padding: clamp(12px,3vw,32px); font: 1rem system-ui,sans-serif;
+  background: var(--orca-bg,Canvas); color: var(--orca-fg,CanvasText) }
+main { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:20px; max-width:1920px; margin:auto }
+@media (max-width:690px) { main { grid-template-columns: minmax(0,1fr) } }
+article { min-width:0; border:1px solid var(--orca-border,#8888); border-radius:8px; overflow:hidden }
+header { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; padding:12px }
+h2 { margin:0; font-size:1.05rem; overflow-wrap:anywhere }
+.state { font-size:.87rem; color:var(--orca-muted,GrayText) }
+canvas { display:block; width:100%; aspect-ratio:16/9; background:#14191c }
+.info { margin:0; padding:10px 12px; min-height:2.5em; overflow-wrap:anywhere }
+.actions { margin:0 auto 12px; max-width:1920px; text-align:right }
+button { font:inherit; padding:6px 14px; cursor:pointer }
+</style></head><body><div class="actions"><button type="button" id="hide">Hide cameras</button></div><main></main>
+<template><article><header><h2></h2><span class="state" role="status"></span></header>
+<canvas width="640" height="360" role="img"></canvas><p class="info"></p></article></template>
+<script>
+(() => {
+  const page = "__PAGE_ID__";
+  const tiles = [];
+  let epoch = 0, generation = 0, active = false, pending = 0, next = 0, request = 0;
+  function tileAt(i) {
+    if (!tiles[i]) {
+      const node = document.querySelector('template').content.firstElementChild.cloneNode(true);
+      document.querySelector('main').append(node);
+      tiles[i] = {node, canvas:node.querySelector('canvas'), revision:0, decoding:false};
+    }
+    return tiles[i];
+  }
+  function show(visible) {
+    if (visible === active) return;
+    active = visible;
+    epoch++;
+    pending = next = 0;
+    for (const tile of tiles) {
+      tile.revision = 0;
+      tile.decoding = false;
+      tile.node.querySelector('.state').textContent = active ? 'Connecting' : 'Paused';
+      tile.node.querySelector('.info').textContent = '';
+    }
+    if (!active) window.orca.postMessage({page, epoch, action:'hide'});
+  }
+  function tick(now) {
+    if (active && now >= next && (!pending || now >= pending)) {
+      next = now + 400;
+      pending = now + 3000;
+      window.orca.postMessage({page, epoch, generation, request:++request, action:'poll',
+        seen:tiles.map(t => t.decoding ? -1 : t.revision)});
+    }
+    window.requestAnimationFrame(tick);
+  }
+  function demo(tile, i, step) {
+    const ctx = tile.canvas.getContext('2d'), w = tile.canvas.width, h = tile.canvas.height;
+    ctx.fillStyle = i ? '#253b47' : '#283b34';
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = '#ffffff38';
+    ctx.beginPath();
+    for (let x=0;x<w;x+=40) { ctx.moveTo(x,0); ctx.lineTo(x,h); }
+    for (let y=0;y<h;y+=40) { ctx.moveTo(0,y); ctx.lineTo(w,y); }
+    ctx.stroke();
+    ctx.fillStyle = '#c0e2da';
+    ctx.fillRect((step*9+i*67)%(w-24), h/2-12, 24, 24);
+  }
+  window.orca.onMessage(msg => {
+    if (!active || msg.page !== page || msg.epoch !== epoch || msg.request !== request) return;
+    pending = 0;
+    if (msg.generation !== generation) {
+      generation = msg.generation;
+      for (const tile of tiles) { tile.revision = 0; tile.decoding = false; }
+    }
+    msg.tiles.forEach((data,i) => {
+      const tile = tileAt(i), node = tile.node, state = node.querySelector('.state');
+      node.querySelector('h2').textContent = data.name;
+      tile.canvas.setAttribute('aria-label', data.name + ' camera');
+      node.querySelector('.info').textContent = data.info;
+      state.textContent = (data.state === 'Live' && !tile.revision) ? 'Connecting' : data.state;
+      if (data.demo !== undefined) { demo(tile,i,data.demo); return; }
+      if (!data.jpeg || tile.decoding) return;
+      const frame = new Image(), started = epoch;
+      tile.decoding = true;
+      frame.onload = () => {
+        if (started !== epoch || msg.generation !== generation) return;
+        const c = tile.canvas, ctx = c.getContext('2d');
+        if (c.width !== frame.width) { c.width = frame.width; c.height = Math.round(c.width * 9/16); }
+        const scale = Math.min(c.width/frame.width,c.height/frame.height);
+        const w = frame.width*scale, h = frame.height*scale;
+        ctx.fillStyle = '#14191c';
+        ctx.fillRect(0,0,c.width,c.height);
+        ctx.drawImage(frame,(c.width-w)/2,(c.height-h)/2,w,h);
+        tile.revision = data.revision;
+        tile.decoding = false;
+        if (state.textContent === 'Connecting' && data.state === 'Live') state.textContent = 'Live';
+      };
+      frame.onerror = () => {
+        if (started === epoch && msg.generation === generation) {
+          tile.decoding = false; state.textContent = 'Unreadable frame';
+        }
+      };
+      frame.src = 'data:image/jpeg;base64,' + data.jpeg;
+    });
+  });
+  document.addEventListener('visibilitychange', () => show(!document.hidden));
+  window.addEventListener('pagehide', () => show(false));
+  window.addEventListener('pageshow', () => show(!document.hidden));
+  document.getElementById('hide').addEventListener('click', () => { show(false); window.orca.close(); });
+  show(!document.hidden);
+  window.requestAnimationFrame(tick);
+})();
+</script></body></html>

@@ -1,0 +1,39 @@
+<style>
+* { box-sizing: border-box }
+body { color:var(--orca-fg,CanvasText); background:var(--orca-bg,Canvas); margin:14px;
+       font:14px/1.4 var(--orca-font,system-ui,sans-serif) }
+fieldset { margin:0 0 12px; padding:0; border:0 }
+legend { font-weight:600; margin-bottom:6px }
+label { display:flex; align-items:baseline; gap:8px; padding:4px 0; overflow-wrap:anywhere }
+input { accent-color:var(--orca-accent,#009688) }
+p { margin:8px 0; color:var(--orca-muted,GrayText) }
+button { font:inherit; padding:4px 12px; cursor:pointer }
+footer { display:flex; align-items:center; gap:10px; margin-top:12px }
+</style>
+<fieldset><legend>Printers to show</legend>__CAMERA_ROWS__</fieldset>
+<p>To add printers from Device or enter one manually, open Camera Printer Setup from the plugin download. Reopen Config to refresh this list.</p>
+<label><input id="demo" type="checkbox"> Preview with two demo cameras</label>
+<footer><button id="save" type="button">Save</button><button id="defaults" type="button">Restore defaults</button>
+<span id="result" role="status"></span></footer>
+<script>
+(() => {
+  const boxes = [...document.querySelectorAll('input[data-camera]')];
+  const demo = document.getElementById('demo');
+  const result = document.getElementById('result');
+  let saving = false;
+  window.orca.onConfig(cfg => {
+    const hidden = new Set(Array.isArray(cfg?.hidden) ? cfg.hidden : []);
+    for (const box of boxes) box.checked = !hidden.has(box.dataset.camera);
+    demo.checked = cfg?.demo === true;
+    if (saving) result.textContent = 'Saved. Reopen the viewer to apply.';
+    saving = false;
+  });
+  document.addEventListener('change', () => { result.textContent = ''; });
+  document.getElementById('defaults').addEventListener('click', () => window.orca.restoreDefaults());
+  document.getElementById('save').addEventListener('click', () => {
+    saving = true;
+    result.textContent = 'Saving…';
+    window.orca.saveConfig({hidden:boxes.filter(b => !b.checked).map(b => b.dataset.camera), demo:demo.checked});
+  });
+})();
+</script>
