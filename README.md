@@ -39,6 +39,12 @@ From the repository root, run `python prepare.py` to build the wheel and end-use
 
 The original viewer was tested against two paired LAN printers on Windows. Both delivered 1280 × 720 frames and status reports. Disconnecting the first reader retained its last image while the other advanced; it reconnected independently. The wxWidgets/WebView2 harness also checked narrow layout, reopen, forced closure and worker cleanup. macOS and Linux have not been exercised on hardware.
 
+## Publishing a release
+
+Update `VERSION` in `prepare.py` and publish a GitHub release from that commit with a matching tag, such as `v0.2.1`. Use a version higher than the current Orca Cloud listing. The release workflow tests the tagged source, builds the wheel and publishes it to P1 LAN Cameras with the GitHub release notes as its changelog. GitHub supplies a short-lived OIDC credential. For the standalone downloads, attach the wheel and setup ZIP produced by `python prepare.py` to the GitHub release.
+
+The plugin owner connects `RJAudas/orcaslicer-lan-cameras` once under **Edit plugin → GitHub publishing**. [Orca Cloud publishing guide](https://cloud.orcaslicer.com/wiki/#publish-from-github)
+
 ## License and credits
 
 This community plugin uses the GNU Affero General Public License, version 3. The bundled printer CA certificates come from OrcaSlicer. [License](LICENSE) · [Upstream certificate bundle](https://github.com/OrcaSlicer/OrcaSlicer/blob/e23af6d7b075ab6e317485551c7cbee33d1b4c4b/resources/cert/printer.cer)

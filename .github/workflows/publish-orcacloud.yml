@@ -1,0 +1,52 @@
+name: Publish to Orca Cloud
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PUBLISH_URL: https://api.orcaslicer.com/api/v1/plugin-publish/plugins/4fdc4fa3-7bfe-4d31-829e-12cdf44ae9d1/releases
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Test and build the tagged wheel
+        run: |
+          set -euo pipefail
+          version="$(python3 -c 'from prepare import VERSION; print(VERSION)')"
+          if [[ "${GITHUB_REF_NAME#v}" != "$version" ]]; then
+            echo "::error::The release tag must match VERSION in prepare.py."
+            exit 1
+          fi
+          python3 -m unittest discover -s tests -v
+          python3 prepare.py
+
+      - name: Publish wheel and changelog
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          wheel="dist/p1s_cameras-${version}-py3-none-any.whl"
+          test -s "$wheel"
+          metadata="$(jq -c --arg version "$version" '
+            {version: $version} + ((.release.body // "")[:4000] |
+              if length > 0 then {changelog: .} else {} end)
+          ' "$GITHUB_EVENT_PATH")"
+          token="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=orcacloud" | jq -er '.value | select(type == "string" and length > 0)')"
+          # Orca Cloud's response can include private review details. Log only the status.
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            -H "Authorization: Bearer $token" \
+            --form-string "metadata=$metadata" --form "files=@$wheel" "$PUBLISH_URL")"
+          if [[ "$status" != 201 ]]; then
+            echo "::error::Orca Cloud publish failed (HTTP $status)."
+            exit 1
+          fi
+          echo "Published $version to Orca Cloud."
