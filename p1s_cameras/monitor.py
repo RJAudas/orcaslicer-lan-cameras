@@ -34,7 +34,9 @@ def job_summary(fields):
     if percent is not None:
         parts.append(f"{percent}%")
     if minutes is not None:
-        parts.append(f"{minutes} min remaining")
+        hours, minutes = divmod(minutes, 60)
+        duration = f"{hours} h {minutes} min" if hours else f"{minutes} min"
+        parts.append(f"{duration} remaining")
     return " · ".join(parts) or "Waiting for print status"
 
 

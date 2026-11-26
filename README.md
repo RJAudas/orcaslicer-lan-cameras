@@ -6,12 +6,12 @@ View live cameras from Bambu Lab P1S and P1P printers in a resizable window besi
 
 Use an OrcaSlicer build with **Plugins → Install local plugin** and support for Script plugins. Download the setup bundle from the [latest release](https://github.com/RJAudas/orcaslicer-lan-cameras/releases/latest).
 
-1. Extract the downloaded ZIP. In OrcaSlicer, open **Plugins → Install local plugin**, choose `p1s_cameras-0.2.0-py3-none-any.whl`, and activate it. The same wheel works for every printer list.
+1. Extract the downloaded ZIP. In OrcaSlicer, open **Plugins → Install local plugin**, choose the included `p1s_cameras` wheel, and activate it. The same wheel works for every printer list.
 2. Run **Camera Printer Setup** once to add printers. Windows users can double-click `Camera Printer Setup.cmd`. On macOS and Linux, run `python3 "Camera Printer Setup.pyz"` in the extracted folder. The graphical assistant uses Python with Tk. Without Tk, the assistant offers the same import and manual-entry choices in the terminal. The Windows launcher can use the Python runtime shipped with OrcaSlicer in its default installation.
 3. Choose **Import from Device…**, select the saved P1 LAN printers you want by name, and click **Add selected → Save**. Setup finds the standard OrcaSlicer profile automatically. Use **Choose another profile…** for a portable installation. **Add manually…** accepts a display name, LAN IPv4 address, serial number and access code.
 4. In Orca, select **p1s_cameras → Config → LAN cameras**. Check the printers to show and click **Save**. Expand the plugin row and click **▶ Run** beside **LAN cameras**. Orca may ask to allow LAN access the first time you use each address. If a tile asks for permission, approve the prompt, then hide and reopen the viewer.
 
-**Upgrading from 0.1.0:** Hide the viewer and deactivate the older plugin before activating 0.2.0. Your existing camera settings are read automatically. Both versions register a script named **LAN cameras**, and Orca identifies local wheels by filename.
+**Upgrading a local install:** Hide the viewer and deactivate the older plugin before activating the new version. Your existing camera settings are read automatically. Each version registers a script named **LAN cameras**, and Orca identifies local wheels by filename.
 
 ## Manage cameras
 

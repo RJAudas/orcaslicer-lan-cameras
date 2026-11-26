@@ -61,6 +61,17 @@ class CameraTests(unittest.TestCase):
         with patch("time.monotonic", return_value=t.last_report + 31):
             self.assertEqual(t.snapshot(0)["info"], "Print status unavailable")
 
+    def test_remaining_time_displays_hours_and_minutes(self):
+        for minutes, expected in (
+            (0, "0 min remaining"),
+            (59, "59 min remaining"),
+            (60, "1 h 0 min remaining"),
+            ("991", "16 h 31 min remaining"),
+            (1505, "25 h 5 min remaining"),
+        ):
+            with self.subTest(minutes=minutes):
+                self.assertEqual(monitor.job_summary({"mc_remaining_time": minutes}), expected)
+
     def test_status_reader_accepts_only_the_configured_report_topic(self):
         fields = {"command": "push_status", "gcode_state": "RUNNING", "mc_percent": "13"}
         payload = json.dumps({"print": fields}).encode("utf-8")
